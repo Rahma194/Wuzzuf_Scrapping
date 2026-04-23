@@ -13,6 +13,9 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+
+#send telegram messages and files
+
 def send_telegram_message(msg):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
@@ -29,6 +32,8 @@ def send_telegram_file(file_path):
         print("Telegram file error:", e)
 
 #-----------------------------------------------------------------------------------------
+
+#progress tracking functions
 
 def load_progress():
     if os.path.exists(PROGRESS_FILE):
@@ -53,6 +58,8 @@ def clear_progress():
 
 #-----------------------------------------------------------------------------------------
 
+#flatten the nested job dict into a single level dict for csv writing
+
 def flatten_job(job : dict) -> dict:
     flat_job = {
         "title": job.get("title"),
@@ -74,6 +81,8 @@ def flatten_job(job : dict) -> dict:
 
 #-----------------------------------------------------------------------------------------
 
+#write a batch of job data to a csv file 
+
 def write_csv_batch(batch_data: list[dict], batch_number: int) -> str:
     flat_rows = [flatten_job(job) for job in batch_data]
     all_columns = list(dict.fromkeys(col for row in flat_rows for col in row.keys()))
@@ -87,6 +96,8 @@ def write_csv_batch(batch_data: list[dict], batch_number: int) -> str:
     return file_path
 
 #-----------------------------------------------------------------------------------------
+
+
 def merge_batches_to_final():
     batch_files = sorted(
         [
@@ -98,7 +109,6 @@ def merge_batches_to_final():
     if not batch_files:
         return
     
-    # Collect all column names across all batches
     all_columns = []
     for bf in batch_files:
         with open(bf, "r" , encoding= "utf-8-sig") as f:
@@ -117,17 +127,17 @@ def merge_batches_to_final():
                 for row in reader:
                     writer.writerow(row)
         
-        # Clean up individual batch files
     for bf in batch_files:
         os.remove(bf)
 
     print(f"Final csv saved -> {final_path}")
 
 #--------------------------------------------------------------------------
+#scrape the listing page to get the job links
+
 async def scrape_page_links(page, page_number):
     for attempt in range(1,MAX_RETRIES + 1):
         try:
-            # Your scraping logic here
             await page.goto(
                 f"{BASE_URL}{LISTING_PATH.format(test_page_number=page_number)}",
                 wait_until = "domcontentloaded",
@@ -151,6 +161,8 @@ async def scrape_page_links(page, page_number):
                 return []
             
 #------------------------------------------------------------------------------------------------
+#scrape the job details page to extract the required information
+
 async def scrape_job_details(context , url, semaphore):
     async with semaphore:
         page = await context.new_page()
@@ -216,7 +228,7 @@ async def scrape_job_details(context , url, semaphore):
                 pass
         await page.close()
 
-
+#-----------------------------------------------------------------------------------------
 
 async def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
